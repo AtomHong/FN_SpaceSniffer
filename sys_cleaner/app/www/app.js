@@ -3,6 +3,7 @@
 let currentPath = "/";
 let pathStack = [];
 let currentItems = [];
+let _loadEpoch = 0; // 每次 loadDir 递增，异步回调检查是否过期
 
 // ─── 颜色映射 (SpaceSniffer 风格) ──────────────────────────
 
@@ -131,7 +132,6 @@ async function loadDirSizes(items) {
 
   const promises = dirs.map((d) =>
     fetchDirSize(d.path).then((data) => {
-      if (data.parent !== undefined && data.parent !== getParentPath(d.path)) return;
       if (data.size !== undefined) {
         d.size = data.size;
         d.size_human = data.size_human;
@@ -153,9 +153,10 @@ async function loadDirSizes(items) {
 let _loadAbort = null;
 
 async function loadDir(path) {
-  // 取消之前的加载
+  // 取消之前的加载，递增 epoch 使旧回调失效
   if (_loadAbort) _loadAbort.abort();
   _loadAbort = new AbortController();
+  const epoch = ++_loadEpoch;
 
   showProgress(true);
   setProgress(0);
@@ -176,8 +177,7 @@ async function loadDir(path) {
     while (true) {
       page++;
       const data = await fetchFiletreePage(path, page);
-      if (_loadAbort.signal.aborted) return;
-      if (data.parent !== undefined && data.parent !== getParentPath(path)) return;
+      if (epoch !== _loadEpoch) return;
       if (data.error) break;
 
       const newItems = data.items || [];
@@ -191,8 +191,7 @@ async function loadDir(path) {
       const newDirs = newItems.filter((i) => i.type === "dir");
       await Promise.allSettled(newDirs.map((d) =>
         fetchDirSize(d.path).then((data) => {
-          if (_loadAbort.signal.aborted) return;
-          if (data.parent !== undefined && data.parent !== getParentPath(d.path)) return;
+          if (epoch !== _loadEpoch) return; // 已切换目录，丢弃
           if (data.size !== undefined) {
             d.size = data.size;
             d.size_human = data.size_human;
@@ -200,6 +199,7 @@ async function loadDir(path) {
           loadedDirs++;
           setProgress(Math.round((loadedDirs / Math.max(totalDirs, 1)) * 100));
         }).catch(() => {
+          if (epoch !== _loadEpoch) return;
           loadedDirs++;
           setProgress(Math.round((loadedDirs / Math.max(totalDirs, 1)) * 100));
         })
