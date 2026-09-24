@@ -1,0 +1,12 @@
+#!/bin/bash
+
+### This script is called before the user installs the application.
+
+# 预创建 venv，避免飞牛框架执行 pip3 时报 externally-managed-environment 错误
+VENV_DIR="${TRIM_PKGVAR}/app/venv"
+
+if [ ! -d "${VENV_DIR}" ]; then
+    python3 -m venv "${VENV_DIR}" 2>/dev/null || true
+fi
+
+exit 0

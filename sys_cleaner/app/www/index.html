@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>飞牛系统清理</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="nav-bar">
+      <button id="btn-back" class="btn-icon" onclick="goBack()" disabled title="返回上级">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div id="breadcrumb" class="breadcrumb"></div>
+      <div class="nav-right">
+        <select id="root-select" onchange="jumpToRoot(this.value)">
+          <option value="/">加载中...</option>
+        </select>
+      </div>
+    </div>
+    <div id="info-bar" class="info-bar">
+      <span id="current-path">/</span>
+      <span id="item-count"></span>
+      <span id="total-size"></span>
+    </div>
+    <div id="progress-bar" class="progress-bar">
+      <div id="progress-fill" class="progress-fill"></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="treemap" class="treemap-container"></div>
+    <div id="tooltip" class="tooltip"></div>
+  </main>
+
+  <script src="d3.v7.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+#!/bin/bash
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+VENV_DIR="${TRIM_PKGVAR}/app/venv"
+
+# write the command to start your program here 
+CMD=""
+
+log_msg() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> ${LOG_FILE}
+}
+
+kill_port_owner() {
+    local port=$1
+    # 优先用 fuser，回退到 lsof
+    local pids=""
+    if command -v fuser >/dev/null 2>&1; then
+        pids=$(fuser ${port}/tcp 2>/dev/null | tr -s ' ')
+    elif command -v lsof >/dev/null 2>&1; then
+        pids=$(lsof -ti :${port} 2>/dev/null)
+    fi
+
+    if [ -n "${pids}" ]; then
+        log_msg "Port ${port} occupied by PIDs: ${pids}, killing..."
+        for pid in ${pids}; do
+            kill -TERM ${pid} 2>/dev/null
+        done
+        sleep 2
+        for pid in ${pids}; do
+            if check_process "${pid}"; then
+                kill -KILL ${pid} 2>/dev/null
+                log_msg "Force killed PID: ${pid}"
+            fi
+        done
+        sleep 1
+    fi
+}
+
+start_process() {
+    if status; then
+        return 0
+    fi
+
+    # 检测端口是否被占用，如果是则杀掉占用进程
+    kill_port_owner 15853
+
+    log_msg "Starting process ..."
+
+    # 优先使用 venv 中的 python，回退到系统 python3
+    if [ -x "${VENV_DIR}/bin/python3" ]; then
+        PYTHON="${VENV_DIR}/bin/python3"
+    else
+        PYTHON="python3"
+    fi
+
+    # run python app
+    cd "${TRIM_APPDEST}/src" && ${PYTHON} app.py >> ${LOG_FILE} 2>&1 &
+    # write pid to pidfile
+    printf "%s" "$!" > ${PID_FILE}
+    # log_msg "CMD = ${CMD}"
+    # log_msg "pid = $!"
+    return 0
+}
+
+stop_process() {
+    log_msg "Stopping process ..."
+
+    if [ -r "${PID_FILE}" ]; then
+        pid=$(head -n 1 "${PID_FILE}" | tr -d '[:space:]')
+        
+        log_msg "pid=${pid}"
+        if ! check_process "${pid}"; then
+            # process not exist, delete pidfile
+            rm -f "${PID_FILE}"
+            log_msg "remove pid file 1"
+            return
+        fi
+
+        log_msg "send TERM signal to PID:${pid}..."
+        kill -TERM ${pid} >> ${LOG_FILE} 2>&1
+
+        local count=0
+        while check_process "${pid}" && [ $count -lt 10 ]; do
+            sleep 1
+            count=$((count + 1))
+            log_msg "waiting process terminal... (${count}s/10s)"
+        done
+
+        if check_process "${pid}"; then
+            log_msg "send KILL signal to PID:${pid}..."
+            kill -KILL "${pid}"
+            sleep 1
+            rm -f "${PID_FILE}"
+        else
+            log_msg "process killed... "
+        fi
+    fi
+
+    return 0
+}
+
+check_process() {
+    local pid=$1
+    if kill -0 "${pid}" 2>/dev/null; then
+        return 0  # process exist
+    else
+        return 1  # process not exist
+    fi
+}
+
+status() {
+    if [ -f "${PID_FILE}" ]; then
+        pid=$(head -n 1 "${PID_FILE}" | tr -d '[:space:]')
+        if check_process "${pid}"; then
+            return 0
+        else
+            # Process is not running but pidfile exists - clean it up
+            rm -f "${PID_FILE}"
+        fi    
+    fi
+
+    return 1
+}
+
+case $1 in
+start)
+    # run start command. exit 0 if success, exit 1 if failed
+    start_process
+    ;;
+stop)
+    # run stop command. exit 0 if success, exit 1 if failed
+    stop_process
+    ;;
+status)
+    # check application status command. exit 0 if running, exit 3 if not running
+    if status; then 
+        exit 0
+    else 
+        exit 3
+    fi
+    ;;
+*)
+    exit 1
+    ;;
+esac

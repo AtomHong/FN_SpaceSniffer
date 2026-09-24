@@ -1,0 +1,10 @@
+appname               = sys_cleaner
+version               = 0.0.1
+display_name          = FN_SpaceSniffer
+desc                  = 类似于pc端的SpaceSniffer，目前只支持查看，不支持删除或预览
+platform              = x86
+source                = thirdparty
+maintainer            = aiden
+distributor           = aiden
+desktop_uidir         = ui
+desktop_applaunchname = sys_cleaner.Application

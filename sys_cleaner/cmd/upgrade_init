@@ -1,0 +1,10 @@
+#!/bin/bash
+
+### This script is called before the user upgrades the application.
+
+# 升级时重建 venv
+VENV_DIR="${TRIM_PKGVAR}/app/venv"
+rm -rf "${VENV_DIR}" 2>/dev/null || true
+python3 -m venv "${VENV_DIR}" 2>/dev/null || true
+
+exit 0

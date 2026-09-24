@@ -1,0 +1,13 @@
+{
+    ".url": {
+        "sys_cleaner.Application": {
+            "title": "FN SpaceSniffer",
+            "icon": "images/icon_64.png",
+            "type": "iframe",
+            "protocol": "http",
+            "port": "15853",
+            "url": "/",
+            "allUsers": false
+        }
+    }
+}

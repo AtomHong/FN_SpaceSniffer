@@ -1,0 +1,12 @@
+{
+  "data-share": {
+    "shares": [
+      {
+        "name": "sys_cleaner"
+      },
+      {
+        "name": "sys_cleaner/data"
+      }
+    ]
+  }
+}
